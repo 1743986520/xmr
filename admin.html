@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>後台管理</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#060a0f;color:#e0ffe8;font-family:'Share Tech Mono',monospace;min-height:100vh;padding:24px}
+  .header{border-bottom:1px solid #00ffb4;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
+  .title{font-size:18px;color:#fff;letter-spacing:2px}
+  .back{font-size:12px;color:#00ffb4;text-decoration:none;border:1px solid #00ffb433;padding:6px 12px;border-radius:4px}
+  .back:hover{background:#00ffb411}
+  .section{background:#0a1018;border:1px solid #00d4ff33;border-left:3px solid #00d4ff;border-radius:8px;padding:20px;margin-bottom:16px}
+  .section-title{font-size:12px;color:#00d4ff;letter-spacing:2px;margin-bottom:16px}
+  .row{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .row-label{font-size:12px;color:#4a7;width:120px;flex-shrink:0}
+  .row-raw{font-size:11px;color:#2a4a2a;flex:1}
+  input.name-input{background:#060a0f;border:1px solid #1a3a1a;border-radius:4px;color:#e0ffe8;font-family:inherit;font-size:13px;padding:6px 10px;width:180px;outline:none}
+  input.name-input:focus{border-color:#00d4ff}
+  button.save-btn{background:#00d4ff22;border:1px solid #00d4ff;border-radius:4px;color:#00d4ff;font-family:inherit;font-size:12px;padding:8px 20px;cursor:pointer;letter-spacing:1px;margin-top:8px}
+  button.save-btn:hover{background:#00d4ff33}
+  .success{color:#00ffb4;font-size:12px;margin-top:8px;display:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">⚙ 後台管理</div>
+  <a href="/" class="back">← 返回儀表板</a>
+</div>
+
+<div class="section">
+  <div class="section-title">— 礦機名稱設定 —</div>
+  <div id="workerList">載入中...</div>
+  <button class="save-btn" onclick="saveNames()">💾 儲存</button>
+  <div class="success" id="successMsg">✅ 已儲存！</div>
+</div>
+
+<script>
+let rawNames = {};
+
+async function loadNames(){
+  const r = await fetch('/api/worker_names');
+  if(r.status===403){ window.location.href='/admin'; return; }
+  rawNames = await r.json();
+  const list = document.getElementById('workerList');
+  if(Object.keys(rawNames).length===0){
+    list.innerHTML='<div style="color:#2a4a2a;font-size:13px">目前沒有礦機資料，請先確認挖礦程式正在運行</div>';
+    return;
+  }
+  list.innerHTML = Object.entries(rawNames).map(([raw, display])=>`
+    <div class="row">
+      <div class="row-label">原始ID：<span style="color:#4a7">${raw}</span></div>
+      <input class="name-input" data-raw="${raw}" value="${display}" placeholder="礦機名稱">
+    </div>
+  `).join('');
+}
+
+async function saveNames(){
+  const inputs = document.querySelectorAll('.name-input');
+  const data = {};
+  inputs.forEach(el => { data[el.dataset.raw] = el.value || el.dataset.raw; });
+  const r = await fetch('/api/save_names', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  const d = await r.json();
+  if(d.ok){
+    const msg = document.getElementById('successMsg');
+    msg.style.display='block';
+    setTimeout(()=>msg.style.display='none', 3000);
+  }
+}
+
+loadNames();
+</script>
+</body>
+</html>

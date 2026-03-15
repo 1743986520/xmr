@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>後台登入</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#060a0f;color:#e0ffe8;font-family:'Share Tech Mono',monospace;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .box{background:#0a1018;border:1px solid #00ffb433;border-top:3px solid #00ffb4;border-radius:8px;padding:32px;width:320px}
+  .title{font-size:16px;color:#00ffb4;letter-spacing:3px;margin-bottom:24px;text-align:center}
+  .label{font-size:11px;color:#4a7;margin-bottom:6px}
+  input{width:100%;background:#060a0f;border:1px solid #1a3a1a;border-radius:4px;color:#e0ffe8;font-family:inherit;font-size:14px;padding:10px 12px;margin-bottom:16px;outline:none}
+  input:focus{border-color:#00ffb4}
+  button{width:100%;background:#00ffb422;border:1px solid #00ffb4;border-radius:4px;color:#00ffb4;font-family:inherit;font-size:14px;padding:10px;cursor:pointer;letter-spacing:2px}
+  button:hover{background:#00ffb433}
+  .error{color:#ff4444;font-size:12px;margin-top:12px;text-align:center;display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="title">⚙ 後台登入</div>
+  <div class="label">帳號</div>
+  <input type="text" id="user" placeholder="username">
+  <div class="label">密碼</div>
+  <input type="password" id="pass" placeholder="password">
+  <button onclick="login()">登入</button>
+  <div class="error" id="err">帳號或密碼錯誤</div>
+</div>
+<script>
+async function login(){
+  const r = await fetch('/api/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username:document.getElementById('user').value, password:document.getElementById('pass').value})
+  });
+  const d = await r.json();
+  if(d.ok) window.location.href='/admin';
+  else document.getElementById('err').style.display='block';
+}
+document.addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛏ 挖礦監控</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--green:#00ffb4;--blue:#00d4ff;--orange:#ff9500;--purple:#a855f7;--red:#ff4444;--yellow:#ffcc00;--bg:#060a0f;--card:#0a1018}
+  body{background:var(--bg);color:#e0ffe8;font-family:'Share Tech Mono',monospace;min-height:100vh;padding:20px}
+  .header{border-bottom:1px solid var(--green);padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+  .sub{font-size:11px;color:var(--green);letter-spacing:4px;margin-bottom:6px}
+  .title{font-size:22px;font-weight:bold;color:#fff;letter-spacing:2px}
+  .header-right{text-align:right;font-size:11px;color:#4a7}
+  .admin-link{font-size:11px;color:#2a4a2a;text-decoration:none;border:1px solid #1a3a1a;padding:4px 10px;border-radius:3px;margin-top:6px;display:inline-block}
+  .admin-link:hover{color:#4a7;border-color:#2a5a2a}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+  .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+  .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px}
+  .card{background:var(--card);border-radius:8px;padding:14px 16px;animation:fadeIn 0.5s ease forwards}
+  .card .label{font-size:11px;color:#4a7;margin-bottom:8px}
+  .card .value{font-size:20px;font-weight:bold}
+  .card .sub{font-size:11px;color:#555;margin-top:4px}
+  .card-green{border:1px solid #00ffb433;border-left:3px solid var(--green)}
+  .card-blue{border:1px solid #00d4ff33;border-left:3px solid var(--blue)}
+  .card-orange{border:1px solid #ff950033;border-left:3px solid var(--orange)}
+  .card-purple{border:1px solid #a855f733;border-left:3px solid var(--purple)}
+  .card-yellow{border:1px solid #ffcc0033;border-left:3px solid var(--yellow)}
+  .card-red{border:1px solid #ff444433;border-left:3px solid var(--red)}
+  .progress-bar{background:#0f1a0f;border-radius:4px;height:8px;margin-top:8px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--green),var(--blue));transition:width 1s ease}
+  .chart-card{background:var(--card);border:1px solid #00ffb422;border-left:3px solid var(--green);border-radius:8px;padding:16px;margin-bottom:18px}
+  .chart-wrap{position:relative;padding-left:52px;padding-bottom:24px}
+  canvas{width:100%;height:140px;display:block}
+  .y-axis{position:absolute;left:0;top:0;height:140px;display:flex;flex-direction:column;justify-content:space-between;font-size:9px;color:#2a5a3a;text-align:right;width:48px;padding-right:4px}
+  .x-axis{display:flex;justify-content:space-between;font-size:9px;color:#2a5a3a;margin-top:4px}
+  .error{background:#1a0505;border:1px solid var(--red);border-left:3px solid var(--red);border-radius:8px;padding:12px;margin-bottom:18px;color:#f88;font-size:13px}
+  .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:3px;margin-left:8px}
+  .tag-online{background:#00ffb422;color:var(--green)}
+  .tag-offline{background:#ff444422;color:var(--red)}
+  .section-title{font-size:11px;color:#4a7;letter-spacing:3px;margin-bottom:12px;margin-top:4px}
+  .worker-card{background:var(--card);border:1px solid #00d4ff22;border-left:3px solid var(--blue);border-radius:8px;padding:14px 16px}
+  .worker-name{font-size:13px;color:var(--blue);margin-bottom:10px;font-weight:bold}
+  .worker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .worker-item .wlabel{font-size:10px;color:#4a7;margin-bottom:3px}
+  .worker-item .wvalue{font-size:14px;font-weight:bold}
+  .footer{border-top:1px solid #0f31;padding-top:14px;font-size:10px;color:#1a3a1a;text-align:center;margin-top:8px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="sub">MONERO MINING DASHBOARD</div>
+    <div class="title">⛏ 挖礦監控中心 <span id="statusTag" class="tag">載入中...</span></div>
+  </div>
+  <div class="header-right">
+    <div id="uptimeEl">儀表板運行：00:00:00</div>
+    <div id="lastUpdateEl" style="margin-top:4px">尚未更新</div>
+    <div style="margin-top:4px;color:#2a4a2a">每 30 秒自動刷新</div>
+    <a href="/admin" class="admin-link">⚙ 後台</a>
+  </div>
+</div>
+
+<div id="errorEl" class="error" style="display:none"></div>
+
+<div class="grid-4">
+  <div class="card card-green">
+    <div class="label">⚡ 當前算力</div>
+    <div class="value" id="hashrate" style="color:var(--green)">---</div>
+  </div>
+  <div class="card card-blue">
+    <div class="label">📊 平均算力</div>
+    <div class="value" id="avgHashrate" style="color:var(--blue)">---</div>
+  </div>
+  <div class="card card-yellow">
+    <div class="label">📈 算力穩定度</div>
+    <div class="value" id="stability" style="color:var(--yellow)">---</div>
+    <div class="progress-bar"><div class="progress-fill" id="stabilityBar" style="width:0%"></div></div>
+  </div>
+  <div class="card card-green">
+    <div class="label">🟢 伺服器在線率</div>
+    <div class="value" id="uptime" style="color:var(--green)">---</div>
+    <div class="progress-bar"><div class="progress-fill" id="uptimeBar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card card-orange">
+    <div class="label">💱 XMR 即時價格</div>
+    <div class="value" id="priceTWD" style="color:var(--orange)">---</div>
+    <div class="sub" id="priceUSD"></div>
+  </div>
+  <div class="card card-orange">
+    <div class="label">🪙 XMR 餘額</div>
+    <div class="value" id="balance" style="color:var(--orange)">---</div>
+    <div class="sub" id="balanceTWD"></div>
+  </div>
+  <div class="card card-purple">
+    <div class="label">✅ 累計已領取</div>
+    <div class="value" id="totalPaid" style="color:var(--purple)">---</div>
+    <div class="sub" id="totalPaidTWD"></div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card card-blue">
+    <div class="label">🎯 距離提領門檻</div>
+    <div class="value" id="toThreshold" style="color:var(--blue)">---</div>
+    <div class="sub" id="thresholdPct"></div>
+    <div class="progress-bar"><div class="progress-fill" id="thresholdBar" style="width:0%"></div></div>
+  </div>
+  <div class="card card-yellow">
+    <div class="label">📦 有效提交</div>
+    <div class="value" id="shares" style="color:var(--yellow)">---</div>
+  </div>
+  <div class="card card-red">
+    <div class="label">⏰ 最後提交</div>
+    <div class="value" id="lastShare" style="font-size:13px;color:var(--red)">---</div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="label" style="margin-bottom:12px">📉 算力歷史（最近 60 筆）</div>
+  <div class="chart-wrap">
+    <div class="y-axis" id="yAxis"><span></span><span></span><span></span><span></span><span>0</span></div>
+    <canvas id="chart"></canvas>
+    <div class="x-axis" id="xAxis"></div>
+  </div>
+</div>
+
+<div class="section-title">— 礦機列表 —</div>
+<div class="grid-2" id="workersGrid">
+  <div style="color:#2a4a2a;font-size:13px">載入中...</div>
+</div>
+
+<div class="footer">
+  錢包：47gJdujRwZuQN386r2X8f98L37b4dVpMvXmtR5YfzxcfDEXB4wykEc6UULS3C9Wg2MKMUwQZi2s9e5okiiSkpVPA1DxGscr
+</div>
+
+<script>
+const startTime = Date.now();
+function fmtH(h){if(!h||isNaN(h))return"0.0 H/s";if(h>=1e6)return(h/1e6).toFixed(2)+" MH/s";if(h>=1e3)return(h/1e3).toFixed(2)+" KH/s";return h.toFixed(1)+" H/s";}
+function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;return[h,m,sec].map(v=>String(v).padStart(2,'0')).join(':');}
+function fmtTS(ts){const d=new Date(ts*1000);return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+
+setInterval(()=>{document.getElementById('uptimeEl').textContent='儀表板運行：'+fmtTime(Math.floor((Date.now()-startTime)/1000));},1000);
+
+function drawChart(history){
+  const canvas=document.getElementById('chart');
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth*DPR,H=140*DPR;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+  if(!history||history.length<2)return;
+  const vals=history.map(d=>d.hs||0);
+  const max=Math.max(...vals)*1.15||1;
+  const step=W/(vals.length-1);
+  document.getElementById('yAxis').innerHTML=[max,max*.75,max*.5,max*.25,0].map(v=>`<span>${fmtH(v)}</span>`).join('');
+  const idx=[0,Math.floor(vals.length/4),Math.floor(vals.length/2),Math.floor(vals.length*3/4),vals.length-1];
+  document.getElementById('xAxis').innerHTML=idx.map(i=>`<span>${history[i]&&history[i].ts?fmtTS(history[i].ts):''}</span>`).join('');
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(0,255,180,0.3)');grad.addColorStop(1,'rgba(0,255,180,0)');
+  ctx.beginPath();
+  vals.forEach((v,i)=>{const x=i*step,y=H-(v/max)*(H-14)-7;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo((vals.length-1)*step,H);ctx.lineTo(0,H);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();
+  vals.forEach((v,i)=>{const x=i*step,y=H-(v/max)*(H-14)-7;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.strokeStyle='#00ffb4';ctx.lineWidth=2*DPR;ctx.shadowColor='#00ffb4';ctx.shadowBlur=8;ctx.stroke();
+  ctx.shadowBlur=0;
+  [.25,.5,.75].forEach(p=>{const y=H-p*(H-14)-7;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.strokeStyle='#0a2a1a';ctx.lineWidth=1;ctx.stroke();});
+}
+
+function fmtDuration(seconds){
+  if(!seconds||seconds<=0)return'---';
+  const d=Math.floor(seconds/86400);
+  const h=Math.floor((seconds%86400)/3600);
+  const m=Math.floor((seconds%3600)/60);
+  if(d>0)return`${d}天 ${h}小時 ${m}分`;
+  if(h>0)return`${h}小時 ${m}分`;
+  return`${m}分鐘`;
+}
+
+function renderWorkers(workers,price){
+  const grid=document.getElementById('workersGrid');
+  if(!workers||Object.keys(workers).length===0){
+    grid.innerHTML='<div style="color:#2a4a2a;font-size:13px">無礦機資料</div>';
+    return;
+  }
+  const now=Math.floor(Date.now()/1000);
+  grid.innerHTML=Object.entries(workers).map(([name,w])=>{
+    const hs=w.hash||w.hs||0,online=hs>0;
+    const color=online?'var(--green)':'var(--red)';
+    const lastSeen=w.lastHash?new Date(w.lastHash*1000).toLocaleString('zh-TW'):'---';
+    const miningDuration=w.firstHash?(now-w.firstHash):null;
+    const durationStr=miningDuration?fmtDuration(miningDuration):'---';
+    const firstSeenStr=w.firstHash?new Date(w.firstHash*1000).toLocaleString('zh-TW'):'---';
+    return `<div class="worker-card">
+      <div class="worker-name"><span style="color:${color};margin-right:6px">●</span>${name}<span style="font-size:10px;color:${color};margin-left:6px">${online?'在線':'離線'}</span></div>
+      <div class="worker-grid">
+        <div class="worker-item"><div class="wlabel">⚡ 當前算力</div><div class="wvalue" style="color:var(--green)">${fmtH(hs)}</div></div>
+        <div class="worker-item"><div class="wlabel">📊 平均算力</div><div class="wvalue" style="color:var(--blue)">${fmtH(w.hash2||0)}</div></div>
+        <div class="worker-item"><div class="wlabel">📦 有效提交</div><div class="wvalue" style="color:var(--yellow)">${w.validShares||0} 份</div></div>
+        <div class="worker-item"><div class="wlabel">⏰ 最後提交</div><div class="wvalue" style="font-size:11px;color:var(--red)">${lastSeen}</div></div>
+        <div class="worker-item" style="grid-column:1/-1"><div class="wlabel">⛏ 挖礦時間</div><div class="wvalue" style="font-size:13px;color:var(--purple)">${durationStr}</div></div>
+        <div class="worker-item" style="grid-column:1/-1"><div class="wlabel">🕐 首次上線</div><div class="wvalue" style="font-size:11px;color:#888">${firstSeenStr}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function fetchAll(){
+  try{
+    const res=await fetch('/api/all');
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const stats=data.stats||{},price=data.price||{},history=data.history||[],workers=data.workers||{};
+    const hashrate=stats.hash||0,avgHashrate=stats.serverAvg||0;
+    const stability=stats.serverStability||0,uptime=stats.serverUptime??100;
+    const balance=stats.amtDue||0,paid=stats.amtPaid||0;
+    const xmrBalance=balance/1e12,totalPaidXMR=paid/1e12,online=hashrate>0;
+
+    const tag=document.getElementById('statusTag');
+    tag.className='tag '+(online?'tag-online':'tag-offline');
+    tag.textContent=online?'挖礦中':'離線';
+
+    document.getElementById('hashrate').textContent=fmtH(hashrate);
+    document.getElementById('avgHashrate').textContent=fmtH(avgHashrate);
+    document.getElementById('stability').textContent=stability.toFixed(1)+'%';
+    document.getElementById('stabilityBar').style.width=stability+'%';
+    document.getElementById('stability').style.color=stability>80?'var(--green)':stability>50?'var(--yellow)':'var(--red)';
+    document.getElementById('uptime').textContent=uptime.toFixed(1)+'%';
+    document.getElementById('uptimeBar').style.width=uptime+'%';
+    document.getElementById('uptime').style.color=uptime>95?'var(--green)':uptime>80?'var(--yellow)':'var(--red)';
+    document.getElementById('priceTWD').textContent=price.twd?'NT$ '+price.twd.toLocaleString():'---';
+    document.getElementById('priceUSD').textContent=price.usd?'≈ US$ '+price.usd.toLocaleString():'';
+    document.getElementById('balance').textContent=xmrBalance.toFixed(6)+' XMR';
+    document.getElementById('balanceTWD').textContent=price.twd?'≈ NT$ '+(xmrBalance*price.twd).toFixed(2):'';
+    document.getElementById('totalPaid').textContent=totalPaidXMR.toFixed(6)+' XMR';
+    document.getElementById('totalPaidTWD').textContent=price.twd?'≈ NT$ '+(totalPaidXMR*price.twd).toFixed(2):'';
+    const threshold=0.003,pct=Math.min(100,xmrBalance/threshold*100);
+    document.getElementById('toThreshold').textContent=Math.max(0,threshold-xmrBalance).toFixed(6)+' XMR';
+    document.getElementById('thresholdPct').textContent='進度 '+pct.toFixed(1)+'%';
+    document.getElementById('thresholdBar').style.width=pct+'%';
+    if(stats.validShares!=null)document.getElementById('shares').textContent=stats.validShares+' 份';
+    if(stats.lastHash)document.getElementById('lastShare').textContent=new Date(stats.lastHash*1000).toLocaleString('zh-TW');
+    document.getElementById('lastUpdateEl').textContent='更新：'+new Date().toLocaleTimeString('zh-TW');
+    document.getElementById('errorEl').style.display='none';
+    drawChart(history);
+    renderWorkers(workers,price);
+  }catch(e){
+    document.getElementById('errorEl').style.display='block';
+    document.getElementById('errorEl').textContent='⚠ 無法連接 API：'+e.message;
+  }
+}
+
+fetchAll();
+setInterval(fetchAll,30000);
+window.addEventListener('resize',fetchAll);
+</script>
+</body>
+</html>
